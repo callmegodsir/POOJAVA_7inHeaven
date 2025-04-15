@@ -5,19 +5,13 @@ public class ProduitMarque {
     private Produit produit;
     private Marque marque;
     private double prixUnitaire;
-    private double prixLot;
-    private int quantiteLot;
+    private double prixGroupe;
+    private int quantiteGroupe;
     private int stock;
     private String imageUrl;
 
-    public ProduitMarque(int id, Produit produit, Marque marque, double prixUnitaire, double prixLot, int quantiteLot, int stock) {
-        this.id = id;
-        this.produit = produit;
-        this.marque = marque;
-        this.prixUnitaire = prixUnitaire;
-        this.prixLot = prixLot;
-        this.quantiteLot = quantiteLot;
-        this.stock = stock;
+    public ProduitMarque() {
+
         this.imageUrl = "/logo.png"; // Par défaut
     }
 
@@ -25,8 +19,8 @@ public class ProduitMarque {
         this.produit = produit;
         this.marque = marque;
         this.prixUnitaire = prixUnitaire;
-        this.prixLot = prixLot;
-        this.quantiteLot = quantiteLot;
+        this.prixGroupe = prixLot;
+        this.quantiteGroupe = quantiteLot;
         this.stock = stock;
         this.imageUrl = "/logo.png"; // Par défaut
     }
@@ -63,21 +57,11 @@ public class ProduitMarque {
         this.prixUnitaire = prixUnitaire;
     }
 
-    public double getPrixLot() {
-        return prixLot;
-    }
+    public Double getPrixGroupe() { return prixGroupe; }
+    public void setPrixGroupe(Double prixGroupe) { this.prixGroupe = prixGroupe; }
 
-    public void setPrixLot(double prixLot) {
-        this.prixLot = prixLot;
-    }
-
-    public int getQuantiteLot() {
-        return quantiteLot;
-    }
-
-    public void setQuantiteLot(int quantiteLot) {
-        this.quantiteLot = quantiteLot;
-    }
+    public Integer getQuantiteGroupe() { return this.quantiteGroupe; }
+    public void setQuantiteGroupe(Integer quantiteGroupe) { this.quantiteGroupe = quantiteGroupe; }
 
     public int getStock() {
         return stock;
@@ -96,14 +80,14 @@ public class ProduitMarque {
     }
 
     public double calculerPrix(int quantite) {
-        if (quantiteLot <= 1 || prixLot <= 0) {
+        if (quantiteGroupe <= 1 || prixGroupe <= 0) {
             return quantite * prixUnitaire;
         }
 
-        int nombreLots = quantite / quantiteLot;
-        int unites = quantite % quantiteLot;
+        int nombreLots = quantite / quantiteGroupe;
+        int unites = quantite % quantiteGroupe;
 
-        return (nombreLots * prixLot) + (unites * prixUnitaire);
+        return (nombreLots * prixGroupe) + (unites * prixUnitaire);
     }
 
     public double calculerReduction(int quantite) {

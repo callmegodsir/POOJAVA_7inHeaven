@@ -2,6 +2,10 @@ package view;
 
 import javax.swing.*;
 import java.awt.*;
+import dao.ProduitMarqueDAO;
+import dao.ProduitMarqueDAOImpl;
+import model.ProduitMarque;
+import java.util.List;
 import java.awt.event.*;
 import java.net.URL;
 import java.text.SimpleDateFormat;
@@ -38,7 +42,7 @@ public class MainWindow extends JFrame {
         this.userType = userType;
         initializeUI();
         // Initialiser quelques produits de démonstration
-        initialiserDonneesDemonstration();
+        initialiserProduitsDepuisBDD();
     }
 
     private void initializeUI() {
@@ -391,21 +395,29 @@ public class MainWindow extends JFrame {
     }
 
     // Méthode pour initialiser des données de démonstration
-    private void initialiserDonneesDemonstration() {
+    private void initialiserProduitsDepuisBDD() {
+        ProduitMarqueDAO pmDao = new ProduitMarqueDAOImpl();
+        List<ProduitMarque> produits = pmDao.trouverTous();
         JPanel grillePanel = (JPanel) produitsPanel.getClientProperty("grillePanel");
+        grillePanel.removeAll();
 
-        // Ajouter des produits de démonstration - ATTENTION: double[] pour les réductions
-        grillePanel.add(createProduitPanel("Briquet Jetable", "BIC", 0.50, new double[]{10.0, 4.00}));
-        grillePanel.add(createProduitPanel("T-Shirt Basic", "Nike", 25.00, new double[]{3.0, 60.00}));
-        grillePanel.add(createProduitPanel("Chaussettes Sport", "Adidas", 8.50, new double[]{5.0, 30.00}));
-        grillePanel.add(createProduitPanel("Casquette", "Puma", 15.00, null));
-        grillePanel.add(createProduitPanel("Bouteille d'Eau", "Nike", 12.00, new double[]{2.0, 20.00}));
-        grillePanel.add(createProduitPanel("Ballon de Foot", "Adidas", 30.00, null));
-        grillePanel.add(createProduitPanel("Sac de Sport", "Puma", 45.00, null));
-        grillePanel.add(createProduitPanel("Montre Sport", "Nike", 120.00, null));
-        grillePanel.add(createProduitPanel("Baskets Running", "Adidas", 95.00, null));
+        for (ProduitMarque pm : produits) {
+            double[] reduction = null;
+            if (pm.getPrixGroupe() != null) {
+                reduction = new double[]{
+                        pm.getQuantiteGroupe(),
+                        pm.getPrixGroupe()
+                };
+            }
 
-        // Mettre à jour le layout
+            grillePanel.add(createProduitPanel(
+                    pm.getProduit().getNom(),
+                    pm.getMarque().getNom(),
+                    pm.getPrixUnitaire(),
+                    reduction
+            ));
+        }
+
         grillePanel.revalidate();
         grillePanel.repaint();
     }

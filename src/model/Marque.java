@@ -5,10 +5,8 @@ public class Marque {
     private String nom;
     private String description;
 
-    public Marque(int id, String nom, String description) {
-        this.id = id;
-        this.nom = nom;
-        this.description = description;
+    public Marque() {
+
     }
 
     public Marque(String nom, String description) {

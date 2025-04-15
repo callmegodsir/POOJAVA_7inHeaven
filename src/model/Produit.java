@@ -6,18 +6,11 @@ public class Produit {
     private String description;
     private String categorie;
 
-    public Produit(int id, String nom, String description, String categorie) {
-        this.id = id;
-        this.nom = nom;
-        this.description = description;
-        this.categorie = categorie;
+    public Produit() {
+
     }
 
-    public Produit(String nom, String description, String categorie) {
-        this.nom = nom;
-        this.description = description;
-        this.categorie = categorie;
-    }
+
 
     public int getId() {
         return id;
