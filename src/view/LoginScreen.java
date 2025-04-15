@@ -147,7 +147,7 @@ public class LoginScreen extends JFrame {
         loginButton = new JButton("Se connecter");
         loginButton.setFont(new Font("Arial", Font.BOLD, 14));
         loginButton.setBackground(PRIMARY_COLOR);
-        loginButton.setForeground(Color.WHITE);
+        loginButton.setForeground(PRIMARY_COLOR);
         loginButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
         gbc.gridy = 6;
         gbc.insets = new Insets(10, 5, 5, 5);

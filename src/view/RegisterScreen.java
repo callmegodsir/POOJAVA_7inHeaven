@@ -16,8 +16,8 @@ public class RegisterScreen extends JFrame {
     private static final String APP_NAME = "7 in Heaven";
     private static final int WINDOW_WIDTH = 800;
     private static final int WINDOW_HEIGHT = 650;
-    private static final Color LIGHT_BG_COLOR = new Color(70, 130, 180); // Bleu acier
-    private static final Color PRIMARY_COLOR = new Color(240, 240, 245);
+    private static final Color LIGHT_BG_COLOR = new Color(0, 128, 97); // Bleu acier
+    private static final Color PRIMARY_COLOR = new Color(237, 27, 45);
 
     // Composants de l'interface
     private JTextField usernameField;
@@ -226,7 +226,7 @@ public class RegisterScreen extends JFrame {
         registerButton = new JButton("S'inscrire");
         registerButton.setFont(new Font("Arial", Font.BOLD, 14));
         registerButton.setBackground(PRIMARY_COLOR);
-        registerButton.setForeground(Color.WHITE);
+        registerButton.setForeground(PRIMARY_COLOR);
         registerButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
         registerButton.setPreferredSize(new Dimension(120, 35));
         buttonPanel.add(registerButton);
@@ -235,6 +235,7 @@ public class RegisterScreen extends JFrame {
         backButton = new JButton("Retour");
         backButton.setFont(new Font("Arial", Font.PLAIN, 14));
         backButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        backButton.setForeground(PRIMARY_COLOR);
         backButton.setPreferredSize(new Dimension(120, 35));
         buttonPanel.add(backButton);
 
