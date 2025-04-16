@@ -5,6 +5,8 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import javax.swing.border.EmptyBorder;
+import controller.UserController;
+import model.User;
 
 /**
  * Écran d'inscription pour l'application 7 in Heaven
@@ -16,7 +18,7 @@ public class RegisterScreen extends JFrame {
     private static final String APP_NAME = "7 in Heaven";
     private static final int WINDOW_WIDTH = 800;
     private static final int WINDOW_HEIGHT = 650;
-    private static final Color LIGHT_BG_COLOR = new Color(0, 128, 97); // Bleu acier
+    private static final Color LIGHT_BG_COLOR = new Color(0, 128, 97);
     private static final Color PRIMARY_COLOR = new Color(237, 27, 45);
 
     // Composants de l'interface
@@ -26,7 +28,6 @@ public class RegisterScreen extends JFrame {
     private JTextField firstNameField;
     private JTextField lastNameField;
     private JTextField emailField;
-    private JTextField addressField;
     private JComboBox<String> userTypeComboBox;
     private JButton registerButton;
     private JButton backButton;
@@ -34,8 +35,12 @@ public class RegisterScreen extends JFrame {
     // Référence à l'écran de connexion
     private LoginScreen loginScreen;
 
+    // Contrôleur utilisateur
+    private UserController userController;
+
     public RegisterScreen(LoginScreen loginScreen) {
         this.loginScreen = loginScreen;
+        this.userController = new UserController();
 
         // Configuration de la fenêtre
         setTitle(APP_NAME + " - Inscription");
@@ -120,7 +125,7 @@ public class RegisterScreen extends JFrame {
         gbc.insets = new Insets(15, 5, 5, 5);
         registerFormPanel.add(userTypeLabel, gbc);
 
-        String[] userTypes = {"Client", "Administrateur"};
+        String[] userTypes = {"client", "admin"};
         userTypeComboBox = new JComboBox<>(userTypes);
         userTypeComboBox.setFont(new Font("Arial", Font.PLAIN, 14));
         gbc.gridy = 2;
@@ -128,7 +133,7 @@ public class RegisterScreen extends JFrame {
         registerFormPanel.add(userTypeComboBox, gbc);
 
         // Identifiant
-        JLabel usernameLabel = new JLabel("Identifiant:");
+        JLabel usernameLabel = new JLabel("Nom d'utilisateur:");
         usernameLabel.setFont(new Font("Arial", Font.PLAIN, 14));
         gbc.gridy = 3;
         gbc.insets = new Insets(10, 5, 5, 5);
@@ -205,19 +210,6 @@ public class RegisterScreen extends JFrame {
         gbc.insets = new Insets(0, 5, 10, 5);
         registerFormPanel.add(emailField, gbc);
 
-        // Adresse
-        JLabel addressLabel = new JLabel("Adresse:");
-        addressLabel.setFont(new Font("Arial", Font.PLAIN, 14));
-        gbc.gridy = 15;
-        gbc.insets = new Insets(10, 5, 5, 5);
-        registerFormPanel.add(addressLabel, gbc);
-
-        addressField = new JTextField(20);
-        addressField.setFont(new Font("Arial", Font.PLAIN, 14));
-        gbc.gridy = 16;
-        gbc.insets = new Insets(0, 5, 15, 5);
-        registerFormPanel.add(addressField, gbc);
-
         // Boutons (dans un panneau séparé pour les centrer)
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
         buttonPanel.setBackground(Color.WHITE);
@@ -239,7 +231,7 @@ public class RegisterScreen extends JFrame {
         backButton.setPreferredSize(new Dimension(120, 35));
         buttonPanel.add(backButton);
 
-        gbc.gridy = 17;
+        gbc.gridy = 15;
         gbc.gridwidth = 2;
         gbc.insets = new Insets(15, 5, 5, 5);
         registerFormPanel.add(buttonPanel, gbc);
@@ -295,8 +287,7 @@ public class RegisterScreen extends JFrame {
                 new String(confirmPasswordField.getPassword()).isEmpty() ||
                 firstNameField.getText().isEmpty() ||
                 lastNameField.getText().isEmpty() ||
-                emailField.getText().isEmpty() ||
-                addressField.getText().isEmpty()) {
+                emailField.getText().isEmpty()) {
 
             JOptionPane.showMessageDialog(this,
                     "Tous les champs sont obligatoires.",
@@ -320,25 +311,59 @@ public class RegisterScreen extends JFrame {
             return false;
         }
 
+        // Vérifier si le nom d'utilisateur existe déjà
+        if (userController.checkIfUserExists(usernameField.getText())) {
+            JOptionPane.showMessageDialog(this,
+                    "Ce nom d'utilisateur existe déjà. Veuillez en choisir un autre.",
+                    "Erreur", JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+
         return true;
     }
 
     /**
-     * Enregistre l'utilisateur (temporairement avec un message)
+     * Enregistre l'utilisateur dans la base de données
      */
     private void registerUser() {
         String username = usernameField.getText();
-        String userType = (String) userTypeComboBox.getSelectedItem();
+        String password = new String(passwordField.getPassword());
+        String role = (String) userTypeComboBox.getSelectedItem();
+        String firstName = firstNameField.getText();
+        String lastName = lastNameField.getText();
+        String email = emailField.getText();
 
-        JOptionPane.showMessageDialog(this,
-                "Compte " + userType + " créé avec succès pour " + username + ".",
-                "Inscription réussie", JOptionPane.INFORMATION_MESSAGE);
+        // Créer un nouvel objet utilisateur
+        User newUser = new User();
+        newUser.setUsername(username);
+        newUser.setPassword(password);
+        newUser.setRole(role);
+        newUser.setFirstName(firstName);
+        newUser.setLastName(lastName);
+        newUser.setEmail(email);
 
-        // Dans une vraie application, on enregistrerait l'utilisateur dans la base de données ici
+        // Essayer d'enregistrer l'utilisateur
+        try {
+            boolean success = userController.registerUser(newUser);
+            if (success) {
+                JOptionPane.showMessageDialog(this,
+                        "Compte " + role + " créé avec succès pour " + username + ".",
+                        "Inscription réussie", JOptionPane.INFORMATION_MESSAGE);
 
-        // Fermer l'écran d'inscription et revenir à l'écran de connexion
-        dispose();
-        loginScreen.setVisible(true);
+                // Fermer l'écran d'inscription et revenir à l'écran de connexion
+                dispose();
+                loginScreen.setVisible(true);
+            } else {
+                JOptionPane.showMessageDialog(this,
+                        "Erreur lors de la création du compte. Veuillez réessayer.",
+                        "Erreur", JOptionPane.ERROR_MESSAGE);
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this,
+                    "Erreur technique: " + e.getMessage(),
+                    "Erreur", JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
+        }
     }
 
     /**

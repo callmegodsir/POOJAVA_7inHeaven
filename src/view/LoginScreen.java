@@ -1,5 +1,8 @@
 package view;
 
+import controller.UserController;
+import model.User;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -27,7 +30,13 @@ public class LoginScreen extends JFrame {
     private JButton loginButton;
     private JButton registerButton;
 
+    // Contrôleur pour l'authentification
+    private UserController userController;
+
     public LoginScreen() {
+        // Initialisation du contrôleur
+        userController = new UserController();
+
         // Configuration de la fenêtre
         setTitle(APP_NAME + " - Connexion");
         setSize(WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -237,22 +246,26 @@ public class LoginScreen extends JFrame {
     }
 
     /**
-     * Méthode d'authentification (à implémenter avec le contrôleur)
+     * Méthode d'authentification avec la base de données
      */
     private void authenticate(String username, String password) {
-        // Code temporaire pour simuler l'authentification
-        if (username.equals("admin") && password.equals("admin")) {
+        if (username.isEmpty() || password.isEmpty()) {
             JOptionPane.showMessageDialog(this,
-                    "Connexion réussie en tant qu'Administrateur",
-                    "Connexion", JOptionPane.INFORMATION_MESSAGE);
-            // Ouvrir l'interface principale en mode administrateur
-            openMainWindow("admin");
-        } else if (username.equals("client") && password.equals("client")) {
+                    "Veuillez remplir tous les champs",
+                    "Erreur de connexion", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Tentative d'authentification via le contrôleur
+        User user = userController.authenticateUser(username, password);
+
+        if (user != null) {
             JOptionPane.showMessageDialog(this,
-                    "Connexion réussie en tant que Client",
+                    "Connexion réussie en tant que " + user.getRole(),
                     "Connexion", JOptionPane.INFORMATION_MESSAGE);
-            // Ouvrir l'interface principale en mode client
-            openMainWindow("client");
+
+            // Ouvrir l'interface principale avec le type d'utilisateur
+            openMainWindow(user.getRole());
         } else {
             JOptionPane.showMessageDialog(this,
                     "Identifiant ou mot de passe incorrect",
