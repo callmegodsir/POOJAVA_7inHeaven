@@ -262,7 +262,11 @@ public class FinalisationCommandeDialog extends JDialog {
             for (Map.Entry<String, Integer> entry : panierProduits.entrySet()) {
                 String nomProduit = entry.getKey();
                 int quantite = entry.getValue();
-
+                ProduitMarqueDAO pmDao = new ProduitMarqueDAOImpl();
+                ProduitMarque pm = pmDao.trouverParNomProduit(nomProduit); // À implémenter si nécessaire
+                if (pm != null) {
+                    pmDao.decrementerStock(pm.getId(), quantite);
+                }
                 if (!produitMarqueIds.containsKey(nomProduit) || !prixProduits.containsKey(nomProduit)) {
                     continue; // Ignorer les produits qui ne sont pas dans la base
                 }

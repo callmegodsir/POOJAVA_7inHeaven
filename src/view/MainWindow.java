@@ -50,24 +50,27 @@ public class MainWindow extends JFrame {
     }
 
     private void initializeUI() {
-        // Configuration de base
         setTitle(APP_NAME + " - " + (userType.equals("admin") ? "Administration" : "Boutique"));
         setSize(WINDOW_WIDTH, WINDOW_HEIGHT);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
-        // Construction de l'interface
-        add(createHeaderPanel(), BorderLayout.NORTH);
+        JPanel headerPanel = createHeaderPanel();
 
-        // Panel principal avec séparation entre produits et résumé
+        // Ajout du bouton admin si nécessaire
+        if ("admin".equals(userType)) {
+            JButton adminButton = new JButton("Panel Admin");
+            adminButton.addActionListener(e -> new AdminScreen(currentUser).setVisible(true));
+            headerPanel.add(adminButton, BorderLayout.EAST);
+        }
+
+        add(headerPanel, BorderLayout.NORTH);
+
         JPanel mainPanel = new JPanel(new BorderLayout());
-
-        // Grille de produits (2/3 gauche)
         produitsPanel = createProduitsPanel();
         mainPanel.add(produitsPanel, BorderLayout.CENTER);
 
-        // Résumé de commande (1/3 droit)
         resumeCommandePanel = createResumeCommandePanel();
         mainPanel.add(resumeCommandePanel, BorderLayout.EAST);
 
