@@ -265,7 +265,7 @@ public class LoginScreen extends JFrame {
                     "Connexion", JOptionPane.INFORMATION_MESSAGE);
 
             // Ouvrir l'interface principale avec le type d'utilisateur
-            openMainWindow(user.getRole());
+            openMainWindow(user);
         } else {
             JOptionPane.showMessageDialog(this,
                     "Identifiant ou mot de passe incorrect",
@@ -288,12 +288,12 @@ public class LoginScreen extends JFrame {
     /**
      * Méthode pour ouvrir l'interface principale
      */
-    private void openMainWindow(String userType) {
+    private void openMainWindow(User user) {
         // Fermer l'écran de connexion
         dispose();
 
         // Créer et afficher la fenêtre principale avec le type d'utilisateur
-        MainWindow mainWindow = new MainWindow(userType);
+        MainWindow mainWindow = new MainWindow(user);
         mainWindow.setVisible(true);
     }
 

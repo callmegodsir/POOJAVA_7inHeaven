@@ -5,6 +5,7 @@ import java.awt.*;
 import dao.ProduitMarqueDAO;
 import dao.ProduitMarqueDAOImpl;
 import model.ProduitMarque;
+import model.User;
 import java.util.List;
 import java.awt.event.*;
 import java.net.URL;
@@ -21,6 +22,7 @@ public class MainWindow extends JFrame {
     private static final int LOGO_HEIGHT = 110;
     private static final int ICON_SIZE = 40;
     private final String userType;
+    private final User currentUser; // Ajout d'un utilisateur courant
 
     // Panels principaux
     private JPanel produitsPanel;
@@ -38,8 +40,10 @@ public class MainWindow extends JFrame {
     private Map<String, Double> prixProduits = new HashMap<>();
     private Map<String, double[]> reductionsProduits = new HashMap<>(); // [quantité pour réduction, prix réduit]
 
-    public MainWindow(String userType) {
-        this.userType = userType;
+    public MainWindow(User loggedInUser) {
+        this.userType = loggedInUser.getRole();
+        this.currentUser = loggedInUser;
+
         initializeUI();
         // Initialiser quelques produits de démonstration
         initialiserProduitsDepuisBDD();
@@ -76,7 +80,12 @@ public class MainWindow extends JFrame {
         headerPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         // Logo
-        headerPanel.add(new JLabel(loadScaledImage("/logo.png", LOGO_WIDTH, LOGO_HEIGHT)), BorderLayout.WEST);
+        ImageIcon logoIcon = loadScaledImage("/logo.png", LOGO_WIDTH, LOGO_HEIGHT);
+        if (logoIcon != null) {
+            headerPanel.add(new JLabel(logoIcon), BorderLayout.WEST);
+        } else {
+            headerPanel.add(new JLabel("Logo"), BorderLayout.WEST);
+        }
 
         // Titre
         JLabel titleLabel = new JLabel(APP_NAME, JLabel.CENTER);
@@ -92,12 +101,22 @@ public class MainWindow extends JFrame {
 
     private JButton createUserButton() {
         JButton button = new JButton();
-        button.setIcon(loadScaledImage("/utilisateur.png", ICON_SIZE, ICON_SIZE));
+        ImageIcon userIcon = loadScaledImage("/utilisateur.png", ICON_SIZE, ICON_SIZE);
+        if (userIcon != null) {
+            button.setIcon(userIcon);
+        } else {
+            button.setText("User");
+        }
         button.setContentAreaFilled(false);
         button.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
         button.setToolTipText("Informations du compte");
 
-        button.addActionListener(this::showUserInfo);
+        button.addActionListener(e -> {
+            showUserInfo(e);
+            // Afficher également l'historique des commandes
+            HistoriqueCommandeDialog historiqueDialog = new HistoriqueCommandeDialog(this, currentUser);
+            historiqueDialog.setVisible(true);
+        });
 
         return button;
     }
@@ -107,8 +126,10 @@ public class MainWindow extends JFrame {
         userPanel.setBorder(BorderFactory.createEmptyBorder(20, 40, 20, 40));
 
         userPanel.add(new JLabel("Type de compte: " + (userType.equals("admin") ? "Administrateur" : "Utilisateur")));
+        userPanel.add(new JLabel("Nom: " + currentUser.getFirstName() + " " + currentUser.getLastName())); // Added line
         userPanel.add(new JLabel("Dernière connexion: " + getLastLogin()));
         userPanel.add(new JLabel("Statut: Actif"));
+
 
         JOptionPane.showMessageDialog(this,
                 userPanel,
@@ -178,7 +199,7 @@ public class MainWindow extends JFrame {
         titreLabel.setFont(new Font("Arial", Font.BOLD, 18));
         headerPanel.add(titreLabel);
 
-        clientNomLabel = new JLabel("Client: Jean Dupont", JLabel.CENTER);
+        clientNomLabel = new JLabel("Client: " + currentUser.getFirstName() + " " + currentUser.getLastName(), JLabel.CENTER);
         clientNomLabel.setFont(new Font("Arial", Font.PLAIN, 14));
         headerPanel.add(clientNomLabel);
 
@@ -231,6 +252,52 @@ public class MainWindow extends JFrame {
         commanderButton.setFont(new Font("Arial", Font.BOLD, 14));
         commanderButton.setPreferredSize(new Dimension(200, 40));
         commanderButton.setMaximumSize(new Dimension(200, 40));
+
+        // Ajout de l'ActionListener pour le bouton de finalisation
+        commanderButton.addActionListener(e -> {
+            // Vérifier si le panier n'est pas vide
+            if (panierProduits.isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                        "Votre panier est vide. Veuillez ajouter des produits avant de finaliser.",
+                        "Panier vide",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            // Extraire les valeurs totales du panier
+            double total = 0;
+            double reductions = 0;
+
+            try {
+                total = Double.parseDouble(prixTotalLabel.getText().replace("Total: ", "").replace(" €", ""));
+                reductions = Double.parseDouble(reductionsLabel.getText().replace("Réductions: ", "").replace(" €", ""));
+            } catch (NumberFormatException ex) {
+                System.err.println("Erreur lors de la conversion des montants: " + ex.getMessage());
+            }
+
+            // Ouvrir la fenêtre de finalisation
+            FinalisationCommandeDialog finalisationDialog = new FinalisationCommandeDialog(
+                    this,
+                    currentUser,
+                    panierProduits,
+                    prixProduits,
+                    reductionsProduits,
+                    total,
+                    reductions
+            );
+            finalisationDialog.setVisible(true);
+
+            // Après fermeture de la fenêtre de finalisation, on peut rafraîchir l'interface
+            // On vide le panier si la commande est validée
+            if (!finalisationDialog.isVisible()) {
+                // Vider le panier
+                panierProduits.clear();
+                prixProduits.clear();
+                reductionsProduits.clear();
+                updateResumeCommande();
+            }
+        });
+
         footerPanel.add(commanderButton);
 
         panel.add(footerPanel, BorderLayout.SOUTH);
@@ -241,16 +308,16 @@ public class MainWindow extends JFrame {
     private ImageIcon loadScaledImage(String path, int width, int height) {
         try {
             URL imageUrl = getClass().getResource(path);
-            if (imageUrl == null) throw new RuntimeException("Image non trouvée: " + path);
+            if (imageUrl == null) {
+                System.err.println("Image non trouvée: " + path);
+                return null;
+            }
 
             return new ImageIcon(new ImageIcon(imageUrl).getImage()
                     .getScaledInstance(width, height, Image.SCALE_SMOOTH));
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(this,
-                    "Erreur de chargement: " + e.getMessage(),
-                    "Erreur",
-                    JOptionPane.ERROR_MESSAGE);
-            return new ImageIcon(); // Icône vide
+            System.err.println("Erreur de chargement d'image: " + e.getMessage());
+            return null;
         }
     }
 
@@ -270,7 +337,13 @@ public class MainWindow extends JFrame {
         ));
 
         // Image du produit
-        JLabel imageLabel = new JLabel(loadScaledImage("/logo.png", 100, 100));
+        ImageIcon produitIcon = loadScaledImage("/logo.png", 100, 100);
+        JLabel imageLabel;
+        if (produitIcon != null) {
+            imageLabel = new JLabel(produitIcon);
+        } else {
+            imageLabel = new JLabel("Image non disponible");
+        }
         imageLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         panel.add(imageLabel);
         panel.add(Box.createRigidArea(new Dimension(0, 10)));
@@ -295,7 +368,7 @@ public class MainWindow extends JFrame {
         panel.add(prixLabel);
 
         // Information de réduction si disponible
-        if (reduction != null) {
+        if (reduction != null && reduction.length == 2) {
             JLabel reductionLabel = new JLabel(String.format("Offre: %.0f pour %.2f €", reduction[0], reduction[1]));
             reductionLabel.setFont(new Font("Arial", Font.ITALIC, 12));
             reductionLabel.setForeground(new Color(0, 128, 0));
@@ -328,95 +401,152 @@ public class MainWindow extends JFrame {
 
     // Mettre à jour le panier avec le produit et sa quantité
     private void updatePanier(String produit, int quantite, double prix, double[] reduction) {
-        if (quantite > 0) {
-            panierProduits.put(produit, quantite);
-            prixProduits.put(produit, prix);
-            if (reduction != null) {
-                reductionsProduits.put(produit, reduction);
+        try {
+            if (quantite > 0) {
+                panierProduits.put(produit, quantite);
+                prixProduits.put(produit, prix);
+                if (reduction != null && reduction.length == 2) {
+                    reductionsProduits.put(produit, reduction);
+                } else {
+                    reductionsProduits.remove(produit);
+                }
+            } else {
+                panierProduits.remove(produit);
+                prixProduits.remove(produit);
+                reductionsProduits.remove(produit);
             }
-        } else {
-            panierProduits.remove(produit);
-            prixProduits.remove(produit);
-            reductionsProduits.remove(produit);
-        }
 
-        updateResumeCommande();
+            updateResumeCommande();
+        } catch (Exception e) {
+            System.err.println("Erreur lors de la mise à jour du panier: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     // Mettre à jour le résumé de la commande
     private void updateResumeCommande() {
-        if (panierProduits.isEmpty()) {
-            resumeArticlesArea.setText("Votre panier est vide.");
-            prixTotalLabel.setText("Total: 0.00 €");
-            reductionsLabel.setText("Réductions: 0.00 €");
-            return;
-        }
-
-        StringBuilder resumeBuilder = new StringBuilder();
-        double total = 0;
-        double totalReductions = 0;
-
-        for (Map.Entry<String, Integer> entry : panierProduits.entrySet()) {
-            String produit = entry.getKey();
-            int quantite = entry.getValue();
-            double prixUnitaire = prixProduits.get(produit);
-
-            resumeBuilder.append(produit).append(" x ").append(quantite);
-
-            double prixNormal = prixUnitaire * quantite;
-            double prixFinal = prixNormal;
-
-            // Calcul des réductions si applicables
-            if (reductionsProduits.containsKey(produit)) {
-                double[] reduction = reductionsProduits.get(produit);
-                int quantiteReduction = (int) reduction[0];
-                double prixReduction = reduction[1];
-
-                if (quantite >= quantiteReduction) {
-                    int nombreLots = quantite / quantiteReduction;
-                    int unitesSeparees = quantite % quantiteReduction;
-
-                    prixFinal = nombreLots * prixReduction + unitesSeparees * prixUnitaire;
-                    double economie = prixNormal - prixFinal;
-                    totalReductions += economie;
-
-                    resumeBuilder.append(" (").append(nombreLots).append(" lot(s) + ")
-                            .append(unitesSeparees).append(" unité(s))");
-                }
+        try {
+            if (panierProduits.isEmpty()) {
+                resumeArticlesArea.setText("Votre panier est vide.");
+                prixTotalLabel.setText("Total: 0.00 €");
+                reductionsLabel.setText("Réductions: 0.00 €");
+                return;
             }
 
-            resumeBuilder.append(String.format(" : %.2f €", prixFinal)).append("\n\n");
-            total += prixFinal;
-        }
+            StringBuilder resumeBuilder = new StringBuilder();
+            double total = 0;
+            double totalReductions = 0;
 
-        resumeArticlesArea.setText(resumeBuilder.toString());
-        prixTotalLabel.setText(String.format("Total: %.2f €", total));
-        reductionsLabel.setText(String.format("Réductions: %.2f €", totalReductions));
+            for (Map.Entry<String, Integer> entry : panierProduits.entrySet()) {
+                String produit = entry.getKey();
+                int quantite = entry.getValue();
+
+                // Vérifier que le produit existe bien dans la map des prix
+                if (!prixProduits.containsKey(produit)) {
+                    System.err.println("Erreur: Prix manquant pour le produit " + produit);
+                    continue;
+                }
+
+                double prixUnitaire = prixProduits.get(produit);
+
+                resumeBuilder.append(produit).append(" x ").append(quantite);
+
+                double prixNormal = prixUnitaire * quantite;
+                double prixFinal = prixNormal;
+
+                // Calcul des réductions si applicables
+                if (reductionsProduits.containsKey(produit)) {
+                    double[] reduction = reductionsProduits.get(produit);
+                    // Vérifier que le tableau de réduction est correctement formaté
+                    if (reduction != null && reduction.length == 2) {
+                        int quantiteReduction = (int) reduction[0];
+                        double prixReduction = reduction[1];
+
+                        if (quantite >= quantiteReduction) {
+                            int nombreLots = quantite / quantiteReduction;
+                            int unitesSeparees = quantite % quantiteReduction;
+
+                            prixFinal = nombreLots * prixReduction + unitesSeparees * prixUnitaire;
+                            double economie = prixNormal - prixFinal;
+                            totalReductions += economie;
+
+                            resumeBuilder.append(" (").append(nombreLots).append(" lot(s) + ")
+                                    .append(unitesSeparees).append(" unité(s))");
+                        }
+                    }
+                }
+
+                resumeBuilder.append(String.format(" : %.2f €", prixFinal)).append("\n\n");
+                total += prixFinal;
+            }
+
+            resumeArticlesArea.setText(resumeBuilder.toString());
+            prixTotalLabel.setText(String.format("Total: %.2f €", total));
+            reductionsLabel.setText(String.format("Réductions: %.2f €", totalReductions));
+        } catch (Exception e) {
+            System.err.println("Erreur lors de la mise à jour du résumé: " + e.getMessage());
+            e.printStackTrace();
+            resumeArticlesArea.setText("Erreur lors du calcul du panier.");
+        }
     }
 
     // Méthode pour initialiser des données de démonstration
     private void initialiserProduitsDepuisBDD() {
-        ProduitMarqueDAO pmDao = new ProduitMarqueDAOImpl();
-        List<ProduitMarque> produits = pmDao.trouverTous();
-        JPanel grillePanel = (JPanel) produitsPanel.getClientProperty("grillePanel");
-        grillePanel.removeAll();
+        try {
+            ProduitMarqueDAO pmDao = new ProduitMarqueDAOImpl();
+            List<ProduitMarque> produits = pmDao.trouverTous();
+            JPanel grillePanel = (JPanel) produitsPanel.getClientProperty("grillePanel");
 
-        for (ProduitMarque pm : produits) {
-            double[] reduction = null;
-            if (pm.getPrixGroupe() != null) {
-                reduction = new double[]{
-                        pm.getQuantiteGroupe(),
-                        pm.getPrixGroupe()
-                };
+            if (grillePanel == null) {
+                System.err.println("Erreur: grillePanel est null");
+                return;
             }
 
-            grillePanel.add(createProduitPanel(
-                    pm.getProduit().getNom(),
-                    pm.getMarque().getNom(),
-                    pm.getPrixUnitaire(),
-                    reduction
-            ));
+            grillePanel.removeAll();
+
+            if (produits == null || produits.isEmpty()) {
+                // Si aucun produit n'est trouvé, ajouter des produits de démonstration
+                ajouterProduitsDemonstration(grillePanel);
+            } else {
+                for (ProduitMarque pm : produits) {
+                    double[] reduction = null;
+                    if (pm.getPrixGroupe() != null && pm.getQuantiteGroupe() > 0) {
+                        reduction = new double[]{
+                                pm.getQuantiteGroupe(),
+                                pm.getPrixGroupe()
+                        };
+                    }
+
+                    grillePanel.add(createProduitPanel(
+                            pm.getProduit().getNom(),
+                            pm.getMarque().getNom(),
+                            pm.getPrixUnitaire(),
+                            reduction
+                    ));
+                }
+            }
+
+            grillePanel.revalidate();
+            grillePanel.repaint();
+        } catch (Exception e) {
+            System.err.println("Erreur lors de l'initialisation des produits: " + e.getMessage());
+            e.printStackTrace();
+            // En cas d'erreur, ajouter des produits de démonstration
+            JPanel grillePanel = (JPanel) produitsPanel.getClientProperty("grillePanel");
+            if (grillePanel != null) {
+                ajouterProduitsDemonstration(grillePanel);
+            }
         }
+    }
+
+    // Méthode pour ajouter des produits de démonstration en cas d'erreur avec la BDD
+    private void ajouterProduitsDemonstration(JPanel grillePanel) {
+        grillePanel.add(createProduitPanel("Baskets Running", "Nike", 89.99, new double[]{3, 249.99}));
+        grillePanel.add(createProduitPanel("Chaussures de Sport", "Adidas", 79.99, new double[]{2, 139.99}));
+        grillePanel.add(createProduitPanel("Sandales Confort", "Puma", 49.99, null));
+        grillePanel.add(createProduitPanel("Bottes Randonnée", "The North Face", 129.99, new double[]{2, 219.99}));
+        grillePanel.add(createProduitPanel("Espadrilles", "Havaianas", 29.99, new double[]{4, 99.99}));
+        grillePanel.add(createProduitPanel("Chaussures de Ville", "Clarks", 89.99, null));
 
         grillePanel.revalidate();
         grillePanel.repaint();
