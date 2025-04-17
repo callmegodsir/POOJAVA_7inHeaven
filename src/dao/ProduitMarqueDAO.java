@@ -10,6 +10,7 @@ public interface ProduitMarqueDAO {
     ProduitMarque trouverParId(int id);
     void mettreAJourStock(int id, int nouveauStock);
     void decrementerStock(int id, int quantite);
+    void mettreAJourPromotion(int id, double prixGroupe, int quantiteGroupe);
     ProduitMarque trouverParNomProduit(String nomProduit);
 
     // Nouvelles méthodes

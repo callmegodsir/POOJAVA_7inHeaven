@@ -84,6 +84,22 @@ public class ProduitMarqueDAOImpl implements ProduitMarqueDAO {
             System.err.println("Erreur mise à jour stock: " + e.getMessage());
         }
     }
+    @Override
+    public void mettreAJourPromotion(int id, double prixGroupe, int quantiteGroupe) {
+        String sql = "UPDATE ProduitMarques SET prix_vente_groupé = ?, quantité_vente_groupé = ? WHERE id = ?";
+
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setDouble(1, prixGroupe);
+            stmt.setInt(2, quantiteGroupe);
+            stmt.setInt(3, id);
+
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("Erreur mise à jour promotion: " + e.getMessage());
+        }
+    }
 
     @Override
     public ProduitMarque trouverParNomProduit(String nomProduit) {
