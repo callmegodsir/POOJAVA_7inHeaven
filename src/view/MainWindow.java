@@ -156,7 +156,7 @@ public class MainWindow extends JFrame {
         JTextField rechercheField = new JTextField(20);
         recherchePanel.add(rechercheField);
 
-        JComboBox<String> marquesCombo = new JComboBox<>(new String[]{"Toutes les marques", "Nike", "Adidas", "Puma"});
+        JComboBox<String> marquesCombo = new JComboBox<>(new String[]{"Toutes les marques", "Quicksnakc", "7th Heaven", "BioBon"});
         recherchePanel.add(new JLabel("Marque: "));
         recherchePanel.add(marquesCombo);
 
