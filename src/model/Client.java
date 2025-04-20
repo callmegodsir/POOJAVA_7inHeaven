@@ -23,7 +23,7 @@ public class Client {
         this.telephone = telephone;
         this.email = email;
     }
-        // oui
+        // avant der
     public Client(Utilisateur utilisateur, String prenom, String nom, String adresse,
                   String codePostal, String ville, String telephone, String email) {
         this.utilisateur = utilisateur;
