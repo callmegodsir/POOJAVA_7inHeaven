@@ -53,7 +53,7 @@ public class Utilisateur {
 
     public String getRole() {
         return role;
-    }
+    }//test
     //test
 
     public void setRole(String role) {
