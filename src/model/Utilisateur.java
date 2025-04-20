@@ -58,7 +58,7 @@ public class Utilisateur {
 
     public void setRole(String role) {
         this.role = role;
-    }
+    }//test
 
     public LocalDateTime getDerniereConnexion() {
         return derniereConnexion;
