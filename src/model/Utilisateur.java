@@ -54,6 +54,7 @@ public class Utilisateur {
     public String getRole() {
         return role;
     }
+    //test
 
     public void setRole(String role) {
         this.role = role;
