@@ -29,7 +29,7 @@ public class Utilisateur {
     //test
     public int getId() {
         return id;
-    }
+    }//please verify
 
     public void setId(int id) {
         this.id = id;
