@@ -37,7 +37,7 @@ public class Utilisateur {
 
     public String getNomUtilisateur() {
         return nomUtilisateur;
-    }
+    }//to be verified
 
     public void setNomUtilisateur(String nomUtilisateur) {
         this.nomUtilisateur = nomUtilisateur;
