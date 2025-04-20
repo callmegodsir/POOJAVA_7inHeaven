@@ -45,7 +45,7 @@ public class Utilisateur {
 
     public String getMotDePasse() {
         return motDePasse;
-    }
+    }//test
 
     public void setMotDePasse(String motDePasse) {
         this.motDePasse = motDePasse;
