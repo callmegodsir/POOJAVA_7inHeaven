@@ -12,6 +12,7 @@ import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import javax.swing.border.*;
+import java.text.Normalizer;
 
 public class MainWindow extends JFrame {
 
@@ -330,7 +331,7 @@ public class MainWindow extends JFrame {
         return sdf.format(new Date());
     }
 
-    // Méthode pour créer un panneau produit individuel
+    /*// Méthode pour créer un panneau produit individuel
     private JPanel createProduitPanel(String nom, String marque, double prix, double[] reduction) {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
@@ -400,7 +401,115 @@ public class MainWindow extends JFrame {
         });
 
         return panel;
+    }*/
+
+
+
+    /*
+    compote_pomme_banane.png
+Barre Protéinée Chocolat    → barre_proteinee_chocolat.png
+Sandwich Poulet Curry       → error.png
+Salade César                → salade_cesar.png
+Café Glacé Vanille          → sandwich_poulet_curry.png
+Cookie Pépites Chocolat     → cookie_pepites_chocolat.png
+Wrap Végétarien             → wrap_vegetarien.png
+Energy Drink Tropical       → energy_drink_tropical.png
+Pizza Margherita            → pizza_margherita.png
+Muffin Myrtille             → muffin_myrtille.png
+Pack Eau 6x1,5L             → pack_eau_6x1_5l.png
+Sushis Saumon Avocat        → sushis_saumon_avocat.png
+Panini Jambon Fromage       → panini_jambon_fromage.png
+Smoothie Mangue-Passion     → smoothie_mangue_passion.png
+Croissant Beurre            → croissant_beurre.png
+    */
+
+
+    public static String genererNomImage(String nomProduit) {
+        String normalise = Normalizer.normalize(nomProduit.toLowerCase(), Normalizer.Form.NFD);
+        String sansAccents = normalise.replaceAll("[\\p{InCombiningDiacriticalMarks}]", "");
+        return sansAccents.replaceAll("[^a-z0-9]", "_") + ".png";
     }
+
+    private JPanel createProduitPanel(String nom, String marque, double prix, double[] reduction) {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Color.LIGHT_GRAY),
+                BorderFactory.createEmptyBorder(10, 10, 10, 10)
+        ));
+
+        // Générer le nom de l'image depuis le nom du produit
+        String nomImage = genererNomImage(nom);
+
+
+        String cheminImage = "/" + nomImage;
+
+        System.out.println("→ Chargement image : " + cheminImage);
+        System.out.println("→ URL trouvée : " + getClass().getResource(cheminImage));
+
+        ImageIcon produitIcon = loadScaledImage(cheminImage, 100, 100);
+        if (produitIcon == null) {
+            produitIcon = loadScaledImage("/default.png", 100, 100);
+        }
+
+
+        JLabel imageLabel = produitIcon != null ? new JLabel(produitIcon) : new JLabel("Image non disponible");
+        imageLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        panel.add(imageLabel);
+        panel.add(Box.createRigidArea(new Dimension(0, 10)));
+
+        // Nom
+        JLabel nomLabel = new JLabel(nom);
+        nomLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        nomLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        panel.add(nomLabel);
+
+        // Marque
+        JLabel marqueLabel = new JLabel("Marque: " + marque);
+        marqueLabel.setFont(new Font("Arial", Font.ITALIC, 12));
+        marqueLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        panel.add(marqueLabel);
+        panel.add(Box.createRigidArea(new Dimension(0, 5)));
+
+        // Prix
+        JLabel prixLabel = new JLabel(String.format("Prix: %.2f €", prix));
+        prixLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+        prixLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        panel.add(prixLabel);
+
+        // Réduction
+        if (reduction != null && reduction.length == 2) {
+            JLabel reductionLabel = new JLabel(String.format("Offre: %.0f pour %.2f €", reduction[0], reduction[1]));
+            reductionLabel.setFont(new Font("Arial", Font.ITALIC, 12));
+            reductionLabel.setForeground(new Color(0, 128, 0));
+            reductionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            panel.add(reductionLabel);
+        }
+
+        panel.add(Box.createRigidArea(new Dimension(0, 10)));
+
+        // Quantité
+        JPanel quantitePanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        quantitePanel.setOpaque(false);
+        quantitePanel.add(new JLabel("Quantité:"));
+
+        SpinnerModel spinnerModel = new SpinnerNumberModel(0, 0, 100, 1);
+        JSpinner quantiteSpinner = new JSpinner(spinnerModel);
+        quantiteSpinner.setPreferredSize(new Dimension(60, 25));
+        quantitePanel.add(quantiteSpinner);
+
+        panel.add(quantitePanel);
+        panel.add(Box.createRigidArea(new Dimension(0, 5)));
+
+        quantiteSpinner.addChangeListener(e -> {
+            int quantite = (int) quantiteSpinner.getValue();
+            updatePanier(nom, quantite, prix, reduction);
+        });
+
+        return panel;
+    }
+
+
 
     // Mettre à jour le panier avec le produit et sa quantité
     private void updatePanier(String produit, int quantite, double prix, double[] reduction) {

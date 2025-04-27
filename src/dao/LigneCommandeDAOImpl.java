@@ -10,6 +10,8 @@ public class LigneCommandeDAOImpl implements LigneCommandeDAO {
 
     @Override
     public List<LigneCommande> trouverParCommandeId(int commandeId) {
+
+
         List<LigneCommande> lignes = new ArrayList<>();
         String sql = "SELECT * FROM LignesCommande WHERE commande_id = ?";
 
