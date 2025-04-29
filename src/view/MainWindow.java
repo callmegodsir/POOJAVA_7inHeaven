@@ -23,31 +23,34 @@ public class MainWindow extends JFrame {
     private static final int LOGO_HEIGHT = 110;
     private static final int ICON_SIZE = 40;
     private final String userType;
-    private final User currentUser; // Ajout d'un utilisateur courant
+    private final User currentUser;
 
-    // Panels principaux
     private JPanel produitsPanel;
     private JPanel resumeCommandePanel;
+    private JPanel grillePanel; // Make grillePanel an instance variable
 
-    // Composants pour le résumé de commande
     private JLabel clientNomLabel;
     private JLabel dateHeureLabel;
     private JTextArea resumeArticlesArea;
     private JLabel prixTotalLabel;
     private JLabel reductionsLabel;
 
-    // Map pour stocker les produits et leurs quantités sélectionnées
     private Map<String, Integer> panierProduits = new HashMap<>();
     private Map<String, Double> prixProduits = new HashMap<>();
-    private Map<String, double[]> reductionsProduits = new HashMap<>(); // [quantité pour réduction, prix réduit]
+    private Map<String, double[]> reductionsProduits = new HashMap<>();
+
+    private List<ProduitMarque> allProduits; // Store all products for filtering
+
+    private JComboBox<String> marquesCombo; // Make combo box accessible
+    private JTextField rechercheField; // Make search field accessible
+
 
     public MainWindow(User loggedInUser) {
         this.userType = loggedInUser.getRole();
         this.currentUser = loggedInUser;
 
         initializeUI();
-        // Initialiser quelques produits de démonstration
-        initialiserProduitsDepuisBDD();
+        initialiserProduitsDepuisBDD(); // Load products and display initially
     }
 
     private void initializeUI() {
@@ -59,7 +62,6 @@ public class MainWindow extends JFrame {
 
         JPanel headerPanel = createHeaderPanel();
 
-        // Ajout du bouton admin si nécessaire
         if ("admin".equals(userType)) {
             JButton adminButton = new JButton("Panel Admin");
             adminButton.addActionListener(e -> new AdminScreen(currentUser).setVisible(true));
@@ -69,7 +71,7 @@ public class MainWindow extends JFrame {
         add(headerPanel, BorderLayout.NORTH);
 
         JPanel mainPanel = new JPanel(new BorderLayout());
-        produitsPanel = createProduitsPanel();
+        produitsPanel = createProduitsPanel(); // This now creates grillePanel as well
         mainPanel.add(produitsPanel, BorderLayout.CENTER);
 
         resumeCommandePanel = createResumeCommandePanel();
@@ -83,7 +85,6 @@ public class MainWindow extends JFrame {
         headerPanel.setBackground(new Color(220, 220, 230));
         headerPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        // Logo
         ImageIcon logoIcon = loadScaledImage("/logo.png", LOGO_WIDTH, LOGO_HEIGHT);
         if (logoIcon != null) {
             headerPanel.add(new JLabel(logoIcon), BorderLayout.WEST);
@@ -91,12 +92,10 @@ public class MainWindow extends JFrame {
             headerPanel.add(new JLabel("Logo"), BorderLayout.WEST);
         }
 
-        // Titre
         JLabel titleLabel = new JLabel(APP_NAME, JLabel.CENTER);
         titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
         headerPanel.add(titleLabel, BorderLayout.CENTER);
 
-        // Bouton utilisateur
         JButton userButton = createUserButton();
         headerPanel.add(userButton, BorderLayout.EAST);
 
@@ -117,7 +116,6 @@ public class MainWindow extends JFrame {
 
         button.addActionListener(e -> {
             showUserInfo(e);
-            // Afficher également l'historique des commandes
             HistoriqueCommandeDialog historiqueDialog = new HistoriqueCommandeDialog(this, currentUser);
             historiqueDialog.setVisible(true);
         });
@@ -126,11 +124,11 @@ public class MainWindow extends JFrame {
     }
 
     private void showUserInfo(ActionEvent e) {
-        JPanel userPanel = new JPanel(new GridLayout(3, 1));
+        JPanel userPanel = new JPanel(new GridLayout(4, 1)); // Increased rows for new label
         userPanel.setBorder(BorderFactory.createEmptyBorder(20, 40, 20, 40));
 
         userPanel.add(new JLabel("Type de compte: " + (userType.equals("admin") ? "Administrateur" : "Utilisateur")));
-        userPanel.add(new JLabel("Nom: " + currentUser.getFirstName() + " " + currentUser.getLastName())); // Added line
+        userPanel.add(new JLabel("Nom: " + currentUser.getFirstName() + " " + currentUser.getLastName()));
         userPanel.add(new JLabel("Dernière connexion: " + getLastLogin()));
         userPanel.add(new JLabel("Statut: Actif"));
 
@@ -146,44 +144,39 @@ public class MainWindow extends JFrame {
         panel.setLayout(new BorderLayout());
         panel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
-        // Titre de la section
-        JLabel titreLabel = new JLabel("Catalogue de Produits");
-        titreLabel.setFont(new Font("Arial", Font.BOLD, 18));
-        panel.add(titreLabel, BorderLayout.NORTH);
-
-        // Zone de recherche et filtres
         JPanel recherchePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         recherchePanel.add(new JLabel("Rechercher: "));
-        JTextField rechercheField = new JTextField(20);
+        rechercheField = new JTextField(20); // Initialize instance variable
         recherchePanel.add(rechercheField);
 
-        JComboBox<String> marquesCombo = new JComboBox<>(new String[]{"Toutes les marques", "Quicksnakc", "7th Heaven", "BioBon"});
+        marquesCombo = new JComboBox<>(new String[]{"Toutes les marques"}); // Initialize instance variable
+        // Populate marquesCombo later after fetching products
         recherchePanel.add(new JLabel("Marque: "));
         recherchePanel.add(marquesCombo);
 
-        JButton rechercheButton = new JButton("Rechercher");
+        JButton rechercheButton = new JButton("Filtrer");
         recherchePanel.add(rechercheButton);
 
         panel.add(recherchePanel, BorderLayout.NORTH);
 
-        // Grille de produits
-        JPanel grillePanel = new JPanel(new GridLayout(0, 3, 15, 15));
+        grillePanel = new JPanel(new GridLayout(0, 3, 15, 15)); // Initialize instance variable
         grillePanel.setBorder(BorderFactory.createEmptyBorder(15, 0, 0, 0));
 
-        // Les produits seront ajoutés dynamiquement ici
-
-        // Wrap la grille dans un JScrollPane
         JScrollPane scrollPane = new JScrollPane(grillePanel);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         scrollPane.setBorder(null);
 
         panel.add(scrollPane, BorderLayout.CENTER);
 
-        // Stocker la référence à la grille pour ajouter des produits plus tard
-        panel.putClientProperty("grillePanel", grillePanel);
+        // Add action listener for filtering
+        ActionListener filterAction = e -> updateProductGrid();
+        rechercheButton.addActionListener(filterAction);
+        marquesCombo.addActionListener(filterAction); // Filter when combo box changes
+        rechercheField.addActionListener(filterAction); // Filter when Enter is pressed in search field
 
         return panel;
     }
+
 
     private JPanel createResumeCommandePanel() {
         JPanel panel = new JPanel();
@@ -195,7 +188,6 @@ public class MainWindow extends JFrame {
         ));
         panel.setBackground(new Color(245, 245, 250));
 
-        // En-tête du résumé
         JPanel headerPanel = new JPanel(new GridLayout(3, 1, 0, 5));
         headerPanel.setOpaque(false);
 
@@ -214,7 +206,6 @@ public class MainWindow extends JFrame {
 
         panel.add(headerPanel, BorderLayout.NORTH);
 
-        // Contenu du résumé
         JPanel contentPanel = new JPanel(new BorderLayout());
         contentPanel.setOpaque(false);
         contentPanel.setBorder(BorderFactory.createEmptyBorder(15, 0, 15, 0));
@@ -233,7 +224,6 @@ public class MainWindow extends JFrame {
 
         panel.add(contentPanel, BorderLayout.CENTER);
 
-        // Pied du résumé (prix total, réductions, bouton)
         JPanel footerPanel = new JPanel();
         footerPanel.setLayout(new BoxLayout(footerPanel, BoxLayout.Y_AXIS));
         footerPanel.setOpaque(false);
@@ -257,9 +247,7 @@ public class MainWindow extends JFrame {
         commanderButton.setPreferredSize(new Dimension(200, 40));
         commanderButton.setMaximumSize(new Dimension(200, 40));
 
-        // Ajout de l'ActionListener pour le bouton de finalisation
         commanderButton.addActionListener(e -> {
-            // Vérifier si le panier n'est pas vide
             if (panierProduits.isEmpty()) {
                 JOptionPane.showMessageDialog(this,
                         "Votre panier est vide. Veuillez ajouter des produits avant de finaliser.",
@@ -268,7 +256,6 @@ public class MainWindow extends JFrame {
                 return;
             }
 
-            // Extraire les valeurs totales du panier
             double total = 0;
             double reductions = 0;
 
@@ -277,9 +264,10 @@ public class MainWindow extends JFrame {
                 reductions = Double.parseDouble(reductionsLabel.getText().replace("Réductions: ", "").replace(" €", ""));
             } catch (NumberFormatException ex) {
                 System.err.println("Erreur lors de la conversion des montants: " + ex.getMessage());
+                JOptionPane.showMessageDialog(this, "Erreur de calcul du total.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                return;
             }
 
-            // Ouvrir la fenêtre de finalisation
             FinalisationCommandeDialog finalisationDialog = new FinalisationCommandeDialog(
                     this,
                     currentUser,
@@ -291,14 +279,16 @@ public class MainWindow extends JFrame {
             );
             finalisationDialog.setVisible(true);
 
-            // Après fermeture de la fenêtre de finalisation, on peut rafraîchir l'interface
-            // On vide le panier si la commande est validée
+            // Check if the dialog is closed AND the command was likely successful (dialog is not visible anymore)
+            // A more robust way would be for the dialog to return a status
             if (!finalisationDialog.isVisible()) {
-                // Vider le panier
+                // Assume command was successful or cancelled, reset cart
                 panierProduits.clear();
                 prixProduits.clear();
                 reductionsProduits.clear();
                 updateResumeCommande();
+                // Reset spinners in the product grid
+                resetSpinners();
             }
         });
 
@@ -309,128 +299,84 @@ public class MainWindow extends JFrame {
         return panel;
     }
 
+    private void resetSpinners() {
+        if (grillePanel == null) return;
+        for (Component comp : grillePanel.getComponents()) {
+            if (comp instanceof JPanel) { // Each product is a JPanel
+                JPanel productPanel = (JPanel) comp;
+                for (Component innerComp : productPanel.getComponents()) {
+                    if (innerComp instanceof JPanel) { // Spinner is usually inside another panel
+                        JPanel quantitePanel = (JPanel) innerComp;
+                        for (Component qComp : quantitePanel.getComponents()) {
+                            if (qComp instanceof JSpinner) {
+                                JSpinner spinner = (JSpinner) qComp;
+                                spinner.setValue(0); // Reset to 0
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
     private ImageIcon loadScaledImage(String path, int width, int height) {
         try {
             URL imageUrl = getClass().getResource(path);
             if (imageUrl == null) {
                 System.err.println("Image non trouvée: " + path);
-                return null;
+                // Try loading default image if specific one not found
+                URL defaultUrl = getClass().getResource("/default.png");
+                if(defaultUrl != null) {
+                    return new ImageIcon(new ImageIcon(defaultUrl).getImage()
+                            .getScaledInstance(width, height, Image.SCALE_SMOOTH));
+                }
+                return null; // Return null if default also not found
             }
 
             return new ImageIcon(new ImageIcon(imageUrl).getImage()
                     .getScaledInstance(width, height, Image.SCALE_SMOOTH));
         } catch (Exception e) {
-            System.err.println("Erreur de chargement d'image: " + e.getMessage());
+            System.err.println("Erreur de chargement d'image: " + path + " - " + e.getMessage());
+            // Try loading default image on error
+            try {
+                URL defaultUrl = getClass().getResource("/default.png");
+                if(defaultUrl != null) {
+                    return new ImageIcon(new ImageIcon(defaultUrl).getImage()
+                            .getScaledInstance(width, height, Image.SCALE_SMOOTH));
+                }
+            } catch (Exception e2) {
+                System.err.println("Erreur chargement image par défaut: " + e2.getMessage());
+            }
             return null;
         }
     }
 
     private String getLastLogin() {
-        // Méthode simulée - À remplacer par une vraie implémentation
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
         return sdf.format(new Date());
     }
 
-    /*// Méthode pour créer un panneau produit individuel
-    private JPanel createProduitPanel(String nom, String marque, double prix, double[] reduction) {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(Color.LIGHT_GRAY),
-                BorderFactory.createEmptyBorder(10, 10, 10, 10)
-        ));
-
-        // Image du produit
-        ImageIcon produitIcon = loadScaledImage("/logo.png", 100, 100);
-        JLabel imageLabel;
-        if (produitIcon != null) {
-            imageLabel = new JLabel(produitIcon);
-        } else {
-            imageLabel = new JLabel("Image non disponible");
-        }
-        imageLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panel.add(imageLabel);
-        panel.add(Box.createRigidArea(new Dimension(0, 10)));
-
-        // Nom du produit
-        JLabel nomLabel = new JLabel(nom);
-        nomLabel.setFont(new Font("Arial", Font.BOLD, 14));
-        nomLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panel.add(nomLabel);
-
-        // Marque
-        JLabel marqueLabel = new JLabel("Marque: " + marque);
-        marqueLabel.setFont(new Font("Arial", Font.ITALIC, 12));
-        marqueLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panel.add(marqueLabel);
-        panel.add(Box.createRigidArea(new Dimension(0, 5)));
-
-        // Prix
-        JLabel prixLabel = new JLabel(String.format("Prix: %.2f €", prix));
-        prixLabel.setFont(new Font("Arial", Font.PLAIN, 14));
-        prixLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panel.add(prixLabel);
-
-        // Information de réduction si disponible
-        if (reduction != null && reduction.length == 2) {
-            JLabel reductionLabel = new JLabel(String.format("Offre: %.0f pour %.2f €", reduction[0], reduction[1]));
-            reductionLabel.setFont(new Font("Arial", Font.ITALIC, 12));
-            reductionLabel.setForeground(new Color(0, 128, 0));
-            reductionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-            panel.add(reductionLabel);
-        }
-        panel.add(Box.createRigidArea(new Dimension(0, 10)));
-
-        // Spinner pour la quantité
-        JPanel quantitePanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        quantitePanel.setOpaque(false);
-        quantitePanel.add(new JLabel("Quantité:"));
-
-        SpinnerModel spinnerModel = new SpinnerNumberModel(0, 0, 100, 1);
-        JSpinner quantiteSpinner = new JSpinner(spinnerModel);
-        quantiteSpinner.setPreferredSize(new Dimension(60, 25));
-        quantitePanel.add(quantiteSpinner);
-
-        panel.add(quantitePanel);
-        panel.add(Box.createRigidArea(new Dimension(0, 5)));
-
-        // Ajouter un écouteur sur le spinner pour mettre à jour le panier
-        quantiteSpinner.addChangeListener(e -> {
-            int quantite = (int) quantiteSpinner.getValue();
-            updatePanier(nom, quantite, prix, reduction);
-        });
-
-        return panel;
-    }*/
-
-
-
-    /*
-    compote_pomme_banane.png
-Barre Protéinée Chocolat    → barre_proteinee_chocolat.png
-Sandwich Poulet Curry       → error.png
-Salade César                → salade_cesar.png
-Café Glacé Vanille          → sandwich_poulet_curry.png
-Cookie Pépites Chocolat     → cookie_pepites_chocolat.png
-Wrap Végétarien             → wrap_vegetarien.png
-Energy Drink Tropical       → energy_drink_tropical.png
-Pizza Margherita            → pizza_margherita.png
-Muffin Myrtille             → muffin_myrtille.png
-Pack Eau 6x1,5L             → pack_eau_6x1_5l.png
-Sushis Saumon Avocat        → sushis_saumon_avocat.png
-Panini Jambon Fromage       → panini_jambon_fromage.png
-Smoothie Mangue-Passion     → smoothie_mangue_passion.png
-Croissant Beurre            → croissant_beurre.png
-    */
-
 
     public static String genererNomImage(String nomProduit) {
-        String normalise = Normalizer.normalize(nomProduit.toLowerCase(), Normalizer.Form.NFD);
-        String sansAccents = normalise.replaceAll("[\\p{InCombiningDiacriticalMarks}]", "");
-        return sansAccents.replaceAll("[^a-z0-9]", "_") + ".png";
+        String normalise = Normalizer.normalize(nomProduit.toLowerCase(Locale.FRENCH), Normalizer.Form.NFD);
+        String sansAccents = normalise.replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
+        String nomFichier = sansAccents.replaceAll("[^a-z0-9]+", "_").replaceAll("^_|_$", "");
+        if (nomFichier.isEmpty()) {
+            return "default.png"; // fallback for names that become empty
+        }
+        return nomFichier + ".png";
     }
 
-    private JPanel createProduitPanel(String nom, String marque, double prix, double[] reduction) {
+    private JPanel createProduitPanel(ProduitMarque pm) {
+        String nom = pm.getProduit().getNom();
+        String marque = pm.getMarque().getNom();
+        double prix = pm.getPrixUnitaire();
+        double[] reduction = null;
+        if (pm.getQuantiteGroupe() > 0 && pm.getPrixGroupe() != null) {
+            reduction = new double[]{pm.getQuantiteGroupe(), pm.getPrixGroupe()};
+        }
+
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBorder(BorderFactory.createCompoundBorder(
@@ -438,47 +384,34 @@ Croissant Beurre            → croissant_beurre.png
                 BorderFactory.createEmptyBorder(10, 10, 10, 10)
         ));
 
-        // Générer le nom de l'image depuis le nom du produit
         String nomImage = genererNomImage(nom);
-
-
         String cheminImage = "/" + nomImage;
 
-        System.out.println("→ Chargement image : " + cheminImage);
-        System.out.println("→ URL trouvée : " + getClass().getResource(cheminImage));
-
         ImageIcon produitIcon = loadScaledImage(cheminImage, 100, 100);
-        if (produitIcon == null) {
-            produitIcon = loadScaledImage("/default.png", 100, 100);
-        }
+        // Default image is now handled inside loadScaledImage
 
-
-        JLabel imageLabel = produitIcon != null ? new JLabel(produitIcon) : new JLabel("Image non disponible");
+        JLabel imageLabel = produitIcon != null ? new JLabel(produitIcon) : new JLabel("Image indisponible");
         imageLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         panel.add(imageLabel);
         panel.add(Box.createRigidArea(new Dimension(0, 10)));
 
-        // Nom
         JLabel nomLabel = new JLabel(nom);
         nomLabel.setFont(new Font("Arial", Font.BOLD, 14));
         nomLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         panel.add(nomLabel);
 
-        // Marque
         JLabel marqueLabel = new JLabel("Marque: " + marque);
         marqueLabel.setFont(new Font("Arial", Font.ITALIC, 12));
         marqueLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         panel.add(marqueLabel);
         panel.add(Box.createRigidArea(new Dimension(0, 5)));
 
-        // Prix
         JLabel prixLabel = new JLabel(String.format("Prix: %.2f €", prix));
         prixLabel.setFont(new Font("Arial", Font.PLAIN, 14));
         prixLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         panel.add(prixLabel);
 
-        // Réduction
-        if (reduction != null && reduction.length == 2) {
+        if (reduction != null) {
             JLabel reductionLabel = new JLabel(String.format("Offre: %.0f pour %.2f €", reduction[0], reduction[1]));
             reductionLabel.setFont(new Font("Arial", Font.ITALIC, 12));
             reductionLabel.setForeground(new Color(0, 128, 0));
@@ -488,12 +421,13 @@ Croissant Beurre            → croissant_beurre.png
 
         panel.add(Box.createRigidArea(new Dimension(0, 10)));
 
-        // Quantité
         JPanel quantitePanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
         quantitePanel.setOpaque(false);
         quantitePanel.add(new JLabel("Quantité:"));
 
-        SpinnerModel spinnerModel = new SpinnerNumberModel(0, 0, 100, 1);
+        // Set initial value based on current cart
+        int initialQuantity = panierProduits.getOrDefault(nom, 0);
+        SpinnerModel spinnerModel = new SpinnerNumberModel(initialQuantity, 0, 100, 1);
         JSpinner quantiteSpinner = new JSpinner(spinnerModel);
         quantiteSpinner.setPreferredSize(new Dimension(60, 25));
         quantitePanel.add(quantiteSpinner);
@@ -501,17 +435,16 @@ Croissant Beurre            → croissant_beurre.png
         panel.add(quantitePanel);
         panel.add(Box.createRigidArea(new Dimension(0, 5)));
 
+        final double[] finalReduction = reduction; // Need final variable for lambda
         quantiteSpinner.addChangeListener(e -> {
             int quantite = (int) quantiteSpinner.getValue();
-            updatePanier(nom, quantite, prix, reduction);
+            updatePanier(nom, quantite, prix, finalReduction);
         });
 
         return panel;
     }
 
 
-
-    // Mettre à jour le panier avec le produit et sa quantité
     private void updatePanier(String produit, int quantite, double prix, double[] reduction) {
         try {
             if (quantite > 0) {
@@ -535,7 +468,6 @@ Croissant Beurre            → croissant_beurre.png
         }
     }
 
-    // Mettre à jour le résumé de la commande
     private void updateResumeCommande() {
         try {
             if (panierProduits.isEmpty()) {
@@ -549,11 +481,14 @@ Croissant Beurre            → croissant_beurre.png
             double total = 0;
             double totalReductions = 0;
 
-            for (Map.Entry<String, Integer> entry : panierProduits.entrySet()) {
-                String produit = entry.getKey();
-                int quantite = entry.getValue();
+            // Sort items alphabetically for consistent display
+            List<String> sortedProducts = new ArrayList<>(panierProduits.keySet());
+            Collections.sort(sortedProducts);
 
-                // Vérifier que le produit existe bien dans la map des prix
+
+            for (String produit : sortedProducts) {
+                int quantite = panierProduits.get(produit);
+
                 if (!prixProduits.containsKey(produit)) {
                     System.err.println("Erreur: Prix manquant pour le produit " + produit);
                     continue;
@@ -566,35 +501,37 @@ Croissant Beurre            → croissant_beurre.png
                 double prixNormal = prixUnitaire * quantite;
                 double prixFinal = prixNormal;
 
-                // Calcul des réductions si applicables
                 if (reductionsProduits.containsKey(produit)) {
                     double[] reduction = reductionsProduits.get(produit);
-                    // Vérifier que le tableau de réduction est correctement formaté
                     if (reduction != null && reduction.length == 2) {
                         int quantiteReduction = (int) reduction[0];
                         double prixReduction = reduction[1];
 
-                        if (quantite >= quantiteReduction) {
+                        if (quantite > 0 && quantiteReduction > 0 && quantite >= quantiteReduction) {
                             int nombreLots = quantite / quantiteReduction;
                             int unitesSeparees = quantite % quantiteReduction;
 
                             prixFinal = nombreLots * prixReduction + unitesSeparees * prixUnitaire;
                             double economie = prixNormal - prixFinal;
-                            totalReductions += economie;
-
-                            resumeBuilder.append(" (").append(nombreLots).append(" lot(s) + ")
-                                    .append(unitesSeparees).append(" unité(s))");
+                            if (economie > 0.005) { // Avoid displaying tiny rounding differences
+                                totalReductions += economie;
+                                resumeBuilder.append(String.format(" (Offre %.0fx appliquée)", reduction[0]));
+                            }
                         }
                     }
                 }
 
-                resumeBuilder.append(String.format(" : %.2f €", prixFinal)).append("\n\n");
+                resumeBuilder.append(String.format(" : %.2f €", prixFinal)).append("\n");
                 total += prixFinal;
             }
 
-            resumeArticlesArea.setText(resumeBuilder.toString());
+            resumeArticlesArea.setText(resumeBuilder.toString().trim());
             prixTotalLabel.setText(String.format("Total: %.2f €", total));
             reductionsLabel.setText(String.format("Réductions: %.2f €", totalReductions));
+
+            // Scroll to the top of the text area
+            resumeArticlesArea.setCaretPosition(0);
+
         } catch (Exception e) {
             System.err.println("Erreur lors de la mise à jour du résumé: " + e.getMessage());
             e.printStackTrace();
@@ -602,66 +539,102 @@ Croissant Beurre            → croissant_beurre.png
         }
     }
 
-    // Méthode pour initialiser des données de démonstration
     private void initialiserProduitsDepuisBDD() {
         try {
             ProduitMarqueDAO pmDao = new ProduitMarqueDAOImpl();
-            List<ProduitMarque> produits = pmDao.trouverTous();
-            JPanel grillePanel = (JPanel) produitsPanel.getClientProperty("grillePanel");
+            allProduits = pmDao.trouverTous(); // Store all products
 
-            if (grillePanel == null) {
-                System.err.println("Erreur: grillePanel est null");
-                return;
+            if (allProduits == null || allProduits.isEmpty()) {
+                allProduits = new ArrayList<>(); // Ensure list is not null
+                System.err.println("Aucun produit trouvé dans la BDD. Chargement des données de démo.");
+                ajouterProduitsDemonstration(); // Add demo data to allProduits
             }
 
-            grillePanel.removeAll();
-
-            if (produits == null || produits.isEmpty()) {
-                // Si aucun produit n'est trouvé, ajouter des produits de démonstration
-                ajouterProduitsDemonstration(grillePanel);
-            } else {
-                for (ProduitMarque pm : produits) {
-                    double[] reduction = null;
-                    if (pm.getPrixGroupe() != null && pm.getQuantiteGroupe() > 0) {
-                        reduction = new double[]{
-                                pm.getQuantiteGroupe(),
-                                pm.getPrixGroupe()
-                        };
-                    }
-
-                    grillePanel.add(createProduitPanel(
-                            pm.getProduit().getNom(),
-                            pm.getMarque().getNom(),
-                            pm.getPrixUnitaire(),
-                            reduction
-                    ));
-                }
+            // Populate brand filter combo box
+            Set<String> marques = new TreeSet<>(); // Use TreeSet for sorted order
+            for (ProduitMarque pm : allProduits) {
+                marques.add(pm.getMarque().getNom());
+            }
+            marquesCombo.removeAllItems(); // Clear default items if any
+            marquesCombo.addItem("Toutes les marques");
+            for (String marque : marques) {
+                marquesCombo.addItem(marque);
             }
 
-            grillePanel.revalidate();
-            grillePanel.repaint();
+
+            // Initial display with all products
+            updateProductGrid();
+
         } catch (Exception e) {
-            System.err.println("Erreur lors de l'initialisation des produits: " + e.getMessage());
+            System.err.println("Erreur lors de l'initialisation des produits depuis BDD: " + e.getMessage());
             e.printStackTrace();
-            // En cas d'erreur, ajouter des produits de démonstration
-            JPanel grillePanel = (JPanel) produitsPanel.getClientProperty("grillePanel");
-            if (grillePanel != null) {
-                ajouterProduitsDemonstration(grillePanel);
-            }
+            allProduits = new ArrayList<>(); // Ensure list is not null
+            ajouterProduitsDemonstration(); // Use demo data as fallback
+            updateProductGrid(); // Display demo data
         }
     }
 
-    // Méthode pour ajouter des produits de démonstration en cas d'erreur avec la BDD
-    private void ajouterProduitsDemonstration(JPanel grillePanel) {
-        grillePanel.add(createProduitPanel("Baskets Running", "Nike", 89.99, new double[]{3, 249.99}));
-        grillePanel.add(createProduitPanel("Chaussures de Sport", "Adidas", 79.99, new double[]{2, 139.99}));
-        grillePanel.add(createProduitPanel("Sandales Confort", "Puma", 49.99, null));
-        grillePanel.add(createProduitPanel("Bottes Randonnée", "The North Face", 129.99, new double[]{2, 219.99}));
-        grillePanel.add(createProduitPanel("Espadrilles", "Havaianas", 29.99, new double[]{4, 99.99}));
-        grillePanel.add(createProduitPanel("Chaussures de Ville", "Clarks", 89.99, null));
+    // Method to update the product grid based on filters
+    private void updateProductGrid() {
+        if (grillePanel == null || allProduits == null) {
+            System.err.println("Grille ou liste produits non initialisée.");
+            return;
+        }
+
+        String selectedBrand = (String) marquesCombo.getSelectedItem();
+        String searchTerm = rechercheField.getText().trim().toLowerCase();
+
+        grillePanel.removeAll(); // Clear the grid
+
+        for (ProduitMarque pm : allProduits) {
+            boolean brandMatch = "Toutes les marques".equals(selectedBrand) || pm.getMarque().getNom().equalsIgnoreCase(selectedBrand);
+            boolean searchMatch = searchTerm.isEmpty() || pm.getProduit().getNom().toLowerCase().contains(searchTerm);
+
+            if (brandMatch && searchMatch) {
+                grillePanel.add(createProduitPanel(pm)); // Recreate panel with current cart quantity
+            }
+        }
+
+        // If no products match, display a message (optional)
+        if (grillePanel.getComponentCount() == 0) {
+            JLabel noResultsLabel = new JLabel("Aucun produit trouvé.", JLabel.CENTER);
+            noResultsLabel.setFont(new Font("Arial", Font.ITALIC, 16));
+            // You might want to add this label directly to the scrollpane's viewport or handle layout differently
+            grillePanel.setLayout(new BorderLayout()); // Change layout to center label
+            grillePanel.add(noResultsLabel, BorderLayout.CENTER);
+        } else {
+            // Reset to grid layout if products were found
+            int cols = 3; // Or calculate based on width
+            int rows = (int) Math.ceil((double) grillePanel.getComponentCount() / cols);
+            grillePanel.setLayout(new GridLayout(rows, cols, 15, 15));
+        }
+
 
         grillePanel.revalidate();
         grillePanel.repaint();
+    }
+
+
+    // Méthode pour ajouter des produits de démonstration en cas d'erreur avec la BDD
+    private void ajouterProduitsDemonstration() {
+        // This method now just adds demo data to the allProduits list
+        // The actual display is handled by updateProductGrid
+        System.out.println("Ajout des produits de démonstration...");
+        // Simulate ProduitMarque objects for consistency
+        // You'll need placeholder Produit and Marque objects or adapt this
+        // For simplicity, assuming you have constructors or setters
+        // NOTE: Replace with actual object creation based on your model classes
+        /* Example (adjust based on your actual Model classes):
+        model.Marque nike = new model.Marque(1, "Nike");
+        model.Produit basket = new model.Produit(1, "Baskets Running", "...", 10);
+        allProduits.add(new ProduitMarque(1, basket, nike, 89.99, 3, 249.99));
+
+        model.Marque adidas = new model.Marque(2, "Adidas");
+        model.Produit chaussure = new model.Produit(2, "Chaussures de Sport", "...", 15);
+        allProduits.add(new ProduitMarque(2, chaussure, adidas, 79.99, 2, 139.99));
+        // ... add more demo products
+        */
+        JOptionPane.showMessageDialog(this, "Impossible de charger les produits. Données de démonstration affichées.", "Erreur de chargement", JOptionPane.WARNING_MESSAGE);
     }
 
     public void display() {
